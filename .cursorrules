@@ -1,0 +1,439 @@
+# Project: Personal AI Multitool Assistant
+# Cursor Rules for Maximum Efficiency
+
+## PROJECT OVERVIEW
+This is a local CLI AI agent built with LangChain 0.3.x and OpenAI API.
+The agent has 8 tools: web search, weather, crypto prices, fiat currency conversion, file operations, QR generation, and memory.
+Primary language: Python 3.11.x (NOT 3.13+)
+User interface: Russian language
+Code/comments: English (docstrings in English, user-facing messages in Russian)
+
+## CRITICAL REQUIREMENTS
+
+### Python Version
+- MUST use Python 3.11.x (3.11.9 recommended)
+- NEVER suggest Python 3.12+ or 3.13+
+- LangChain 0.3.x is incompatible with Python 3.13+
+- Always check Python version compatibility before suggesting packages
+
+### Package Versions (STRICT)
+- langchain>=0.3.7,<0.4.0
+- langchain-openai>=0.2.4,<0.3.0
+- langchain-community>=0.3.7,<0.4.0
+- openai>=1.30.0
+- duckduckgo-search>=6.3.0
+- python-dotenv>=1.0.0
+- requests>=2.32.0
+- colorama>=0.4.6
+- qrcode>=7.4.2
+- pillow>=10.3.0
+
+## PROJECT STRUCTURE (FIXED - DO NOT CHANGE)
+
+```
+personal-ai-multitool-assistant/
+├── agent/
+│   ├── __init__.py          # Package init
+│   ├── agent.py             # Main agent logic (LangChain)
+│   ├── tools.py             # All 8 tools implementation
+│   └── memory.json          # Long-term memory (auto-created)
+├── .env.example             # Template for environment variables
+├── .gitignore               # Git ignore rules
+├── .cursorrules             # This file
+├── README.md                # Project documentation
+├── requirements.txt         # Python dependencies
+└── run.py                   # Entry point (CLI interface)
+```
+
+## CODING STANDARDS
+
+### General Python
+- Follow PEP 8 strictly
+- Use type hints for all function parameters and returns
+- Maximum line length: 88 characters (Black formatter style)
+- Use f-strings for string formatting
+- Prefer pathlib over os.path for file operations
+- Use context managers (with statement) for file/resource handling
+
+### Naming Conventions
+- Functions/variables: snake_case
+- Classes: PascalCase
+- Constants: UPPER_SNAKE_CASE
+- Private methods: _leading_underscore
+- File names: snake_case.py
+
+### Imports Order
+1. Standard library imports
+2. Third-party imports (langchain, openai, etc.)
+3. Local application imports
+4. Blank line between each group
+
+Example:
+```python
+import os
+import json
+from datetime import datetime
+
+from langchain.tools import tool
+from langchain_openai import ChatOpenAI
+import requests
+
+from .tools import get_all_tools
+```
+
+## LANGCHAIN-SPECIFIC RULES
+
+### Agent Creation
+- ALWAYS use `create_openai_functions_agent` (NOT deprecated methods)
+- Use `AgentExecutor` with these settings:
+  - verbose=True (for debugging)
+  - handle_parsing_errors=True
+  - max_iterations=10
+- System prompt MUST be in Russian
+- Use `MessagesPlaceholder` for chat history
+
+### Tools Implementation
+- Each tool MUST have `@tool` decorator
+- Docstrings format:
+  ```python
+  @tool
+  def tool_name(param: str) -> str:
+      """
+      Brief description in English.
+      
+      Args:
+          param: Parameter description
+      
+      Returns:
+          What this tool returns
+      """
+  ```
+- Return user-facing strings in RUSSIAN
+- Log every tool call with logger.info()
+- Wrap all logic in try-except with detailed error messages
+
+### Memory Handling
+- Use ConversationBufferMemory (if needed)
+- Save important exchanges to memory.json
+- JSON format with UTF-8 encoding
+- Pretty-print with indent=2
+
+## ERROR HANDLING RULES
+
+### Try-Except Blocks
+- EVERY tool MUST have try-except
+- EVERY HTTP request MUST have timeout=10
+- ALWAYS log exceptions with exc_info=True
+- Return user-friendly error messages in Russian
+
+Example pattern:
+```python
+try:
+    logger.info(f"ToolName: param={param}")
+    # Tool logic here
+    result = some_operation()
+    logger.info(f"ToolName: success")
+    return result
+except requests.Timeout:
+    error_msg = f"Превышено время ожидания при запросе"
+    logger.error(f"ToolName timeout: {error_msg}", exc_info=True)
+    return f"❌ {error_msg}"
+except Exception as e:
+    error_msg = f"Ошибка: {str(e)}"
+    logger.error(f"ToolName error: {error_msg}", exc_info=True)
+    return f"❌ {error_msg}"
+```
+
+### HTTP Requests Best Practices
+- ALWAYS set timeout=10
+- ALWAYS call .raise_for_status()
+- Handle RequestException, Timeout, ConnectionError separately
+- Log request URL and parameters (but NOT sensitive data like API keys)
+
+## LOGGING REQUIREMENTS
+
+### Configuration
+- Use logging module (NOT print statements)
+- Log level: INFO (configurable via .env)
+- Format: `%(asctime)s - %(name)s - %(levelname)s - %(message)s`
+- Dual output: file (agent.log) AND console
+- UTF-8 encoding for log file
+
+### What to Log
+- ✅ Every tool invocation (with parameters)
+- ✅ Tool results/successes
+- ✅ All exceptions (with exc_info=True)
+- ✅ API calls (URL, params, but NOT keys)
+- ✅ File operations (read/write paths)
+- ✅ User queries and agent responses
+- ❌ NEVER log API keys, tokens, passwords
+- ❌ NEVER log full file contents in logs
+
+### Log Levels
+- DEBUG: Detailed debugging information
+- INFO: General information (tool calls, successes)
+- WARNING: Unexpected but handled situations
+- ERROR: Errors with exc_info=True
+
+## SECURITY RULES
+
+### Environment Variables
+- ALWAYS use python-dotenv
+- NEVER hardcode API keys
+- Check if env vars exist before using:
+  ```python
+  api_key = os.getenv("OPENAI_API_KEY")
+  if not api_key:
+      raise ValueError("OPENAI_API_KEY not found in .env")
+  ```
+
+### File Operations
+- Validate file paths (prevent directory traversal)
+- Limit file size when reading (max 10MB)
+- Use UTF-8 encoding explicitly
+- Create directories with exist_ok=True
+
+### .gitignore MUST Include
+- .env (CRITICAL!)
+- agent/memory.json (may contain user data)
+- *.log
+- __pycache__/
+- .venv/
+
+## TOOL-SPECIFIC REQUIREMENTS
+
+### 1. web_search (DuckDuckGo)
+- Use duckduckgo_search library
+- Default max_results=5
+- Format results nicely with title, description, link
+- Handle empty results gracefully
+
+### 2. get_weather (OpenMeteo)
+- Two-step process: geocode city → get weather
+- Use OpenMeteo Geocoding API first
+- Handle city not found
+- Return temperature, wind speed, conditions in Russian
+- Map weather codes to Russian descriptions
+
+### 3. get_crypto_price (CoinGecko)
+- Use CoinGecko free API (no key needed)
+- Default currency: USD
+- Support: bitcoin, ethereum, litecoin, etc.
+- Handle unknown crypto IDs
+
+### 4. get_fiat_currency (Frankfurter)
+- Use Frankfurter API (free, no key)
+- Support major currencies: USD, EUR, RUB, JPY, GBP, etc.
+- Return conversion rate and date
+- Handle unsupported currency codes
+
+### 5. file_read
+- Support relative paths from project root
+- Check file existence before reading
+- Limit file size (max 10MB)
+- Return content with filename in output
+
+### 6. file_write
+- Create directories if needed (os.makedirs)
+- Use UTF-8 encoding
+- Return confirmation with file path and size
+
+### 7. memory_save
+- Append to JSON array in agent/memory.json
+- Structure: {timestamp, user, agent, summary}
+- ISO format for timestamps
+- Preserve all existing entries
+
+### 8. generate_qr_code
+- Use qrcode library
+- Default settings: version=1, box_size=10, border=4
+- Save as PNG with black/white colors
+- Create directory if needed
+
+## USER INTERFACE RULES
+
+### Russian Language
+- System prompt: Russian
+- Error messages: Russian
+- Tool outputs: Russian
+- Help messages: Russian
+- Success confirmations: Russian
+
+### Emoji Usage (Optional but Recommended)
+- 🔍 Web search
+- 🌤️ Weather
+- 💰 Crypto prices
+- 💱 Currency conversion
+- 📁 File operations
+- 🎨 QR code generation
+- 💾 Memory operations
+- ✅ Success
+- ❌ Error
+
+### Colorama (run.py)
+- Cyan: Headers and system messages
+- Green: Agent responses and success
+- Yellow: User input prompt
+- Red: Error messages
+
+## TESTING CHECKLIST
+
+Before marking code as complete, ensure:
+- [ ] All 8 tools implemented with @tool decorator
+- [ ] Logging configured (file + console)
+- [ ] Try-except in every tool
+- [ ] HTTP requests have timeout=10
+- [ ] Russian user-facing messages
+- [ ] English docstrings and code comments
+- [ ] .env.example created
+- [ ] .gitignore includes .env
+- [ ] requirements.txt has exact versions
+- [ ] README.md is comprehensive
+- [ ] Type hints for all functions
+- [ ] No hardcoded API keys
+
+## COMMON MISTAKES TO AVOID
+
+### ❌ NEVER DO THIS:
+- Use Python 3.13+ (incompatible with LangChain 0.3.x)
+- Hardcode API keys in code
+- Use print() instead of logging
+- Forget timeout on HTTP requests
+- Return English messages to users
+- Use deprecated LangChain methods (initialize_agent, etc.)
+- Commit .env file to git
+- Read large files without size limit
+- Forget error handling in tools
+
+### ✅ ALWAYS DO THIS:
+- Check Python version (must be 3.11.x)
+- Use environment variables for secrets
+- Log all tool invocations
+- Set timeout=10 on all HTTP requests
+- Return Russian messages to users
+- Use create_openai_functions_agent
+- Add .env to .gitignore
+- Validate file sizes before reading
+- Wrap tool logic in try-except
+
+## DEBUGGING GUIDELINES
+
+When fixing errors:
+1. Check logs first (agent.log)
+2. Verify environment variables are loaded
+3. Confirm Python version is 3.11.x
+4. Test tool individually before integration
+5. Use verbose=True in AgentExecutor
+6. Add temporary debug logging if needed
+
+## CODE REVIEW CHECKLIST
+
+Before submitting code, verify:
+- [ ] Follows PEP 8 (run: black . && flake8)
+- [ ] All functions have type hints
+- [ ] All functions have docstrings
+- [ ] Logging in place
+- [ ] Error handling complete
+- [ ] No secrets in code
+- [ ] Russian user messages
+- [ ] Comments explain WHY, not WHAT
+- [ ] Tests pass (if implemented)
+
+## OPTIMIZATION TIPS
+
+### Performance
+- Use connection pooling for repeated HTTP requests
+- Cache geocoding results (city → coordinates)
+- Limit max_iterations to prevent infinite loops
+- Stream large files instead of loading into memory
+
+### User Experience
+- Show loading indicators for slow operations
+- Provide helpful error messages
+- Suggest corrections for common mistakes
+- Add /help command for listing capabilities
+
+## WHEN ASKED TO ADD FEATURES
+
+1. First verify it aligns with project scope
+2. Check if it requires new dependencies
+3. Ensure Python 3.11.x compatibility
+4. Follow the same pattern as existing tools
+5. Add to get_all_tools() list
+6. Update README.md with new capability
+7. Add to testing checklist
+
+## WHEN ASKED TO DEBUG
+
+1. Request the exact error message
+2. Ask to see agent.log contents
+3. Verify .env is configured
+4. Check Python version
+5. Confirm all dependencies installed
+6. Test tool in isolation
+7. Add debug logging if needed
+8. Provide step-by-step fix
+
+## FILES TO NEVER MODIFY STRUCTURE
+
+These files have fixed structure - only modify content:
+- agent/__init__.py (minimal, just version)
+- .env.example (template only)
+- .gitignore (comprehensive security rules)
+
+## FILES TO GENERATE EXACTLY AS SPECIFIED
+
+Reference genai-readme.md for exact implementation:
+- agent/agent.py (LangChain setup)
+- agent/tools.py (all 8 tools)
+- run.py (CLI interface with colorama)
+- requirements.txt (exact versions)
+
+## RESPONSE STYLE
+
+When generating code:
+- Provide complete, working code (not snippets)
+- Include all necessary imports
+- Add docstrings and type hints
+- Explain what changed and why
+- Show before/after diff when modifying
+
+When answering questions:
+- Be specific and technical
+- Reference relevant documentation
+- Provide code examples
+- Warn about potential issues
+- Suggest best practices
+
+## INTEGRATION WITH genai-readme.md
+
+This .cursorrules file is a COMPANION to genai-readme.md:
+- genai-readme.md: Complete specifications and examples
+- .cursorrules: Coding standards and best practices
+- When in conflict: genai-readme.md takes precedence
+- When unclear: Ask for clarification referencing both files
+
+## VERSION CONTROL
+
+Project version: 1.0.0
+LangChain version: 0.3.x
+Python version: 3.11.x
+Last updated: 2025-01-15
+
+---
+
+## QUICK REFERENCE
+
+**Python Version:** 3.11.x ONLY  
+**LangChain Version:** 0.3.7+  
+**Model:** GPT-4o-mini  
+**Tools Count:** 8  
+**User Language:** Russian  
+**Code Language:** English  
+**Logging:** File + Console  
+**Timeout:** 10 seconds for all HTTP  
+**Max Iterations:** 10  
+
+---
+
+Remember: Quality > Speed. Take time to implement correctly the first time.
