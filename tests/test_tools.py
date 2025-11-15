@@ -141,7 +141,8 @@ class TestCryptoPrice:
         result = get_crypto_price.invoke({"crypto_id": "bitcoin"})
         
         assert "BITCOIN" in result or "bitcoin" in result.lower()
-        assert "50000" in result
+        # Price is formatted with commas: "50,000.00" or without: "50000"
+        assert "50000" in result.replace(",", "") or "50,000" in result
         assert "📈" in result or "📉" in result
     
     def test_get_crypto_price_not_found(self, mock_requests_get):
