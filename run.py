@@ -15,6 +15,17 @@ from dotenv import load_dotenv
 
 from agent.agent import create_agent
 
+# Fix Windows encoding for Russian text and emojis
+if os.name == "nt":  # Windows
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+        sys.stderr.reconfigure(encoding="utf-8")
+    except AttributeError:
+        # Python < 3.7 fallback
+        import io
+        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
+        sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8")
+
 # Initialize colorama for Windows support
 colorama.init(autoreset=True)
 
@@ -76,6 +87,11 @@ def main():
         agent = create_agent()
         logger.info("Agent initialized successfully")
         
+        # Initialize chat history (stores last 10 messages to prevent memory leak)
+        # Format: list of tuples ("human", content) or ("ai", content)
+        MAX_HISTORY_LENGTH = 10
+        chat_history = []
+        
         # Main loop
         while True:
             try:
@@ -109,12 +125,20 @@ def main():
                     )
                     continue
                 
-                # Invoke agent
+                # Invoke agent with chat history
                 logger.info(f"User query: {user_input}")
                 print(colorama.Fore.CYAN + "\n🤖 Ассистент думает...\n")
                 
-                response = agent.invoke({"input": user_input})
+                response = agent.invoke({
+                    "input": user_input,
+                    "chat_history": chat_history
+                })
                 agent_response = response.get("output", "Нет ответа")
+                
+                # Add to chat history (keep last MAX_HISTORY_LENGTH messages)
+                chat_history.append(("human", user_input))
+                chat_history.append(("ai", agent_response))
+                chat_history = chat_history[-MAX_HISTORY_LENGTH:]
                 
                 print(colorama.Fore.GREEN + f"🤖 Ассистент: {agent_response}\n")
                 logger.info("Agent response generated")

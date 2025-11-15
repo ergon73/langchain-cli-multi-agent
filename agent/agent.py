@@ -67,9 +67,10 @@ def create_agent() -> AgentExecutor:
     )
     
     # Create prompt template
-    # Note: chat_history removed - AgentExecutor manages history via agent_scratchpad
+    # chat_history is now included to support conversation context
     prompt = ChatPromptTemplate.from_messages([
         ("system", system_prompt),
+        MessagesPlaceholder(variable_name="chat_history"),
         ("human", "{input}"),
         MessagesPlaceholder(variable_name="agent_scratchpad")
     ])

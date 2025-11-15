@@ -717,13 +717,41 @@ def memory_save(user_message: str, agent_response: str, summary: str) -> str:
         logger.info("memory_save: saving conversation")
         
         memory_file = PROJECT_ROOT / "agent" / "memory.json"
+        MAX_MEMORY_ENTRIES = 100  # Limit memory size to prevent unbounded growth
         
         # Load existing memory or create new
         if memory_file.exists():
-            with open(memory_file, "r", encoding="utf-8") as f:
-                memory = json.load(f)
+            try:
+                with open(memory_file, "r", encoding="utf-8") as f:
+                    history = json.load(f)
+                # Validate that it's a list
+                if not isinstance(history, list):
+                    raise ValueError("Memory file is not a list")
+            except json.JSONDecodeError:
+                # Backup corrupted file and start fresh
+                backup_file = memory_file.with_suffix(".corrupted.json")
+                logger.warning(
+                    f"memory_save: corrupted JSON detected, "
+                    f"backing up to {backup_file}"
+                )
+                try:
+                    memory_file.rename(backup_file)
+                except Exception:
+                    # If rename fails, try to write backup
+                    try:
+                        with open(backup_file, "w", encoding="utf-8") as f:
+                            f.write("[]")
+                    except Exception:
+                        pass
+                history = []
+            except Exception as e:
+                logger.error(
+                    f"memory_save: error loading memory file: {e}",
+                    exc_info=True
+                )
+                history = []
         else:
-            memory = []
+            history = []
         
         # Add new entry
         entry = {
@@ -732,18 +760,20 @@ def memory_save(user_message: str, agent_response: str, summary: str) -> str:
             "agent": agent_response,
             "summary": summary
         }
-        memory.append(entry)
+        
+        # Limit memory size (keep last MAX_MEMORY_ENTRIES entries)
+        history = (history + [entry])[-MAX_MEMORY_ENTRIES:]
         
         # Save memory
         with open(memory_file, "w", encoding="utf-8") as f:
-            json.dump(memory, f, ensure_ascii=False, indent=2)
+            json.dump(history, f, ensure_ascii=False, indent=2)
         
         result = (
             f"💾 Разговор сохранён в память.\n"
-            f"Всего записей: {len(memory)}"
+            f"Всего записей: {len(history)}"
         )
         
-        logger.info(f"memory_save: success, total entries={len(memory)}")
+        logger.info(f"memory_save: success, total entries={len(history)}")
         return result
     
     except Exception as e:

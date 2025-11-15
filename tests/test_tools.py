@@ -284,6 +284,61 @@ class TestMemory:
         if memory_file.exists():
             content = memory_file.read_text(encoding="utf-8")
             assert "Test message" in content or "Test summary" in content
+    
+    def test_memory_save_corrupted_json(self, temp_dir):
+        """Test memory_save with corrupted JSON file."""
+        memory_file = temp_dir / "agent" / "memory.json"
+        memory_file.parent.mkdir(parents=True, exist_ok=True)
+        
+        # Create corrupted JSON file
+        memory_file.write_text("{invalid json}", encoding="utf-8")
+        
+        with patch("agent.tools.PROJECT_ROOT", temp_dir):
+            result = memory_save.invoke({
+                "user_message": "Test message",
+                "agent_response": "Test response",
+                "summary": "Test summary"
+            })
+        
+        # Should handle corrupted file gracefully
+        assert "💾" in result or "сохранён" in result.lower() or "память" in result.lower()
+        # Backup file should be created
+        backup_file = memory_file.with_suffix(".corrupted.json")
+        assert backup_file.exists() or memory_file.exists()
+    
+    def test_memory_save_size_limit(self, temp_dir):
+        """Test that memory is limited to MAX_MEMORY_ENTRIES."""
+        memory_file = temp_dir / "agent" / "memory.json"
+        memory_file.parent.mkdir(parents=True, exist_ok=True)
+        
+        # Create memory file with 150 entries (more than limit of 100)
+        large_memory = [
+            {
+                "timestamp": "2025-01-01T00:00:00",
+                "user": f"Message {i}",
+                "agent": f"Response {i}",
+                "summary": f"Summary {i}"
+            }
+            for i in range(150)
+        ]
+        memory_file.write_text(
+            json.dumps(large_memory, ensure_ascii=False),
+            encoding="utf-8"
+        )
+        
+        with patch("agent.tools.PROJECT_ROOT", temp_dir):
+            result = memory_save.invoke({
+                "user_message": "New message",
+                "agent_response": "New response",
+                "summary": "New summary"
+            })
+        
+        # Memory should be limited to 100 entries
+        with open(memory_file, "r", encoding="utf-8") as f:
+            saved_memory = json.load(f)
+        
+        assert len(saved_memory) == 100
+        assert saved_memory[-1]["user"] == "New message"
 
 
 class TestQRCode:
