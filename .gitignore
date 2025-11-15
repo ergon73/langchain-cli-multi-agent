@@ -1,6 +1,9 @@
 # Environment variables (CRITICAL - never commit!)
 .env
 
+# Cursor IDE rules (local development only)
+.cursorrules
+
 # Python
 __pycache__/
 *.py[cod]
