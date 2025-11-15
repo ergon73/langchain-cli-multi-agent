@@ -59,6 +59,11 @@ test_results.txt
 TEST_ANALYSIS.md
 PROBLEMS_ANALYSIS.md
 TEST_QUESTIONS.md
+.pytest_cache/
+.coverage
+htmlcov/
+*.cover
+.hypothesis/
 
 # Temporary dialog files
 dialog*.txt
