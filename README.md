@@ -186,9 +186,10 @@ langchain-cli-multi-agent/
 
 ## 👤 Автор
 
-**ergon73**
+**Георгий Белянин (Georgy Belyanin)**
 
-- GitHub: [@ergon73](https://github.com/ergon73)
+- 📧 Email: [georgy.belyanin@gmail.com](mailto:georgy.belyanin@gmail.com)
+- 🐙 GitHub: [@ergon73](https://github.com/ergon73)
 
 Создано с использованием Cursor AI и LangChain.
 

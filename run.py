@@ -1,4 +1,9 @@
-"""Entry point for the Personal AI Multitool Assistant CLI."""
+"""Entry point for the Personal AI Multitool Assistant CLI.
+
+Author: Георгий Белянин (Georgy Belyanin)
+Email: georgy.belyanin@gmail.com
+GitHub: https://github.com/ergon73/langchain-cli-multi-agent
+"""
 
 import logging
 import os
